@@ -36,17 +36,62 @@ def classify(topn):
                     article_has_class
             )
     ;"""
+    categoryQuery = """
+        SELECT
+            DISTINCT class, subclass
+        FROM
+            classes
+        LIMIT %d
+    ;""" % ( int(topn))
 
     cur.execute(sqlQuery)
     data = cur.fetchall()
+    cur.execute(categoryQuery)
+    categoriesData = cur.fetchall()
+
+    categories = []
+    for row in categoriesData:
+        info = [
+            row[0].split(), # class
+            row[1].split(), # subclass
+            1,              # weight
+            0               # weight count
+        ]
+        categories.append(info)
+
+    articles = []
+    for row in data:
+        array = [
+            row[0],         # title
+            row[1].split(), # summary
+            categories      # array of classes, subclasses, weight and the weight count
+        ]
+        articles.append(array)
+
+    for article in articles:
+        for word in article[1]:
+            for classW in article[2][0]:
+                if word == classW:
+                    article[2][3] = article[2][3] + article[2][2]
+            for subW in article[2][1]:
+                if word == subW:
+                    article[2][3] = article[2][3] + article[2][2]
+
+    for article in articles:
+        for category in article[2]:
+            print(category[3])
+        print("\n")
 
     result = [("title", "class", "subclass", "weightsum"), ]
-    for row in data:
-        result.append(row)
+    for article in articles:
+        info = (
+            article[0],
+        )
+        result.append(info)
 
     return result
 
-
+ 
 def updateweight(class1, subclass, weight):
 
    # Create a new connection
