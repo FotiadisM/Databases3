@@ -70,22 +70,36 @@ def classify(topn):
 
     for article in articles:
         for word in article[1]:
-            for classW in article[2][0]:
-                if word == classW:
-                    article[2][3] = article[2][3] + article[2][2]
-            for subW in article[2][1]:
-                if word == subW:
-                    article[2][3] = article[2][3] + article[2][2]
+            for category in article[2]:
+                for classW in category[0]:
+                    if word.lower() == classW.lower():
+                        category[3] = category[3] + category[2]
+                for subclassW in category[1]:
+                    if word.lower() == subclassW.lower():
+                        category[3] = category[3] + category[2]
+            print("\n")
 
     for article in articles:
+        print(article[0])
         for category in article[2]:
             print(category[3])
         print("\n")
 
+    def findCategory(categories):
+        THEcategory = categories[0]
+        for category in categories:
+            if category[3] > THEcategory[3]:
+                THEcategory = category
+        return THEcategory
+
     result = [("title", "class", "subclass", "weightsum"), ]
     for article in articles:
+        THEcategory = findCategory(article[2])
         info = (
             article[0],
+            " ".join(THEcategory[0]),
+            " ".join(THEcategory[1]),
+            THEcategory[3]
         )
         result.append(info)
 
