@@ -3,6 +3,7 @@ import sys, os
 sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], 'lib'))
 import pymysql as db
 import settings
+import operator
 
 
 def connection():
@@ -22,6 +23,13 @@ def classify(topn):
     con = connection()
     # Create a cursor on the connection
     cur = con.cursor()
+
+    def findCategory(categories):
+        THEcategory = categories[0]
+        for category in categories:
+            if category[3] > THEcategory[3]:
+                THEcategory = category
+        return THEcategory
 
     sqlQuery = """
         SELECT
@@ -69,6 +77,7 @@ def classify(topn):
         articles.append(array)
 
     for article in articles:
+        print(article[0])
         for word in article[1]:
             for category in article[2]:
                 for classW in category[0]:
@@ -77,20 +86,12 @@ def classify(topn):
                 for subclassW in category[1]:
                     if word.lower() == subclassW.lower():
                         category[3] = category[3] + category[2]
-            print("\n")
 
-    for article in articles:
-        print(article[0])
-        for category in article[2]:
-            print(category[3])
-        print("\n")
-
-    def findCategory(categories):
-        THEcategory = categories[0]
-        for category in categories:
-            if category[3] > THEcategory[3]:
-                THEcategory = category
-        return THEcategory
+    # for article in articles:
+    #     print("Article's name: ", article[0])
+    #     for category in article[2]:
+    #         print("Class = ", " ".join(category[0]), "Subclass = ", " ".join(category[1]), " Wcount: ", category[3])
+    #     print("\n")
 
     result = [("title", "class", "subclass", "weightsum"), ]
     for article in articles:
@@ -102,6 +103,9 @@ def classify(topn):
             THEcategory[3]
         )
         result.append(info)
+
+    cur.close()
+    con.close()
 
     return result
 
@@ -221,9 +225,64 @@ def findSimilarArticles(articleId,n):
 
     # Create a new connection
     con = connection()
-
     # Create a cursor on the connection
     cur = con.cursor()
 
-    cur.execute("")
-    return [("articleid",), ]
+    def Jaccard(theArticle, otherArticle):
+        similar = 0
+        different = 0
+
+        for theWord in theArticle:
+            for otherWord in otherArticle:
+                if theWord.lower() == otherWord.lower():
+                    similar += 1
+                else:
+                    different += 1
+
+        return similar / (similar + different)
+
+    theArticleQuery = """
+        SELECT
+            summary
+        FROM
+            articles
+        WHERE
+            id = %d
+    ;""" % ( int(articleId))
+    articlesQuery = """
+        SELECT
+            id, summary
+        FROM
+            articles
+        WHERE
+            NOT id = %d
+    ;""" % ( int(articleId))
+
+    cur.execute(theArticleQuery)
+    theArticle = cur.fetchall()
+    cur.execute(articlesQuery)
+    articles = cur.fetchall()
+
+    values = []
+    for article in articles:
+        array = [
+            article[0],
+            Jaccard(theArticle[0][0].split(), article[1].split())
+        ]
+        values.append(array)
+
+    # print(values)
+    values.sort(key=operator.itemgetter(1), reverse=True)
+    # sorted(values, key=lambda x: x[1])
+
+    for value in values:
+        print("id:", value[0], ", value is:", value[1], "\n")
+
+    result = [("articleid",), ]
+    for i in range(int(n)):
+        array = (
+            values[i][0],  
+        )
+        result.append(array)
+
+    return result
